@@ -1,0 +1,62 @@
+{
+  "name": "cit-playwright-tests",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build:base": "(cd playwright-base && yarn && tsc --build && yarn pack)",
+    "build:basecit": "(cd cit-base && yarn removeOld && yarn addNew && yarn && tsc --build && yarn pack)",
+    "build:employee": "(cd playwright-employee-app && yarn removeOld && yarn addNew && yarn && yarn build)",
+    "build:storefront": "(cd playwright-storefront-app && yarn removeOld && yarn addNew && yarn && yarn build)",
+    "rebuild:basecit:employee": "yarn cache clean && yarn build:basecit && yarn build:employee",
+    "rebuild:basecit:storefront": "yarn cache clean && yarn build:basecit && yarn build:storefront",
+    "build": "yarn && yarn build:base && yarn build:basecit && yarn build:employee && yarn build:storefront",
+    "lint:storefront": "(cd playwright-storefront-app && yarn lint)",
+    "lint:employee": "(cd playwright-employee-app && yarn lint)",
+    "lint:base": "(cd playwright-base && yarn lint)",
+    "lint": "yarn lint:base && yarn lint:employee && yarn lint:storefront",
+    "nuke:base": "(cd playwright-base && npx rimraf node_modules && npx rimraf build && npx rimraf *.tgz && npx rimraf *.tsbuildinfo)",
+    "nuke:basecit": "(cd cit-base && npx rimraf node_modules && npx rimraf build && npx rimraf *.tgz && npx rimraf *.tsbuildinfo)",
+    "nuke:employee": "(cd playwright-employee-app && npx rimraf node_modules)",
+    "nuke:storefront": "(cd playwright-storefront-app && npx rimraf node_modules)",
+    "nuke": "yarn nuke:base && yarn nuke:basecit && yarn nuke:employee && yarn nuke:storefront && npx rimraf node_modules",
+    "test:storefront": "(cd playwright-storefront-app && yarn test:ci)",
+    "test:employee": "(cd playwright-employee-app && yarn test:ci)",
+    "test:storefront:chrome": "(cd playwright-storefront-app && yarn test:ci:chrome)",
+    "test:storefront-grep:chrome": "(cd playwright-storefront-app && yarn test:ci-grep:chrome)",
+    "test:employee:chrome": "(cd playwright-employee-app && yarn test:ci:chrome)",
+    "test:employee-grep:chrome": "(cd playwright-employee-app && yarn test:ci-grep:chrome)",
+    "test": "yarn test:employee && yarn test:storefront",
+    "test:both:chrome": "(yarn test:storefront:chrome) || (yarn test:employee:chrome)",
+    "test:both-grep:chrome": "(yarn test:storefront-grep:chrome) & (yarn test:employee-grep:chrome)",
+    "brutelint": "yarn nuke && yarn cache clean && yarn build && yarn lint",
+    "format": "(cd playwright-base && yarn format) && (cd cit-base && yarn format) && (cd playwright-employee-app && yarn format) && (cd playwright-storefront-app && yarn format)",
+    "xray:sendTestResults": "(yarn copyXrayScripts) && (cd scripts && node makeXrayCompatibleResult.js && node --experimental-modules sendTestResultsToXray.js)",
+    "copyXrayScripts": "cpy 'node_modules/@opengov/playwright-base/build/scripts/*.js' scripts"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "**/*.{ts,json}": [
+      "npx prettier --write",
+      "npx eslint --fix"
+    ]
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "eslint-config-prettier": "^8.5.0",
+    "husky": "^8.0.1",
+    "lint-staged": "^13.0.3",
+    "prettier": "^2.6.2",
+    "rimraf": "^3.0.2",
+    "typescript": "4.8.4"
+  },
+  "engines": {
+    "node": ">= 16.15.0"
+  }
+}

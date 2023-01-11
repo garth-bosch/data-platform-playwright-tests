@@ -1,0 +1,49 @@
+{
+  "name": "playwright-employee-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc --build",
+    "removeOld": "(yarn remove @opengov/cit-base --skip-integrity-check || echo \"Base CIT not removed\") && (yarn remove @opengov/playwright-base --skip-integrity-check || echo \"Base not removed\") && yarn generate-lock-entry",
+    "addNew": "(yarn add ../cit-base/opengov-cit-base-v1.0.4.tgz --force) && (yarn add ../playwright-base/opengov-playwright-base-v1.0.5.tgz --force)",
+    "lint": "eslint . --ext .ts --max-warnings=0",
+    "format": "prettier --ignore-path .gitignore --write \"**/*.+(ts|json)\"",
+    "test:ci": "npx playwright test -c playwright.config.ts --grep '@nightly' --grep-invert '@known_defect|@wip|@broken_test'",
+    "test:ci:chrome": "npx playwright test -c playwright.config.ts --grep '@nightly' --grep-invert '@known_defect|@wip|@broken_test' --project=\"chromium\"",
+    "test:ci-grep:chrome": "npx playwright test -c playwright.config.ts --project=\"chromium\"",
+    "test:ciwithdefects": "npx playwright test -c playwright.config.ts --grep '@known_defect' --project=\"chromium\"",
+    "test": "npx playwright test -c playwright.config.ts --project=\"chromium\"",
+    "test:headed": "yarn run test -- --headed",
+    "test:debug": "yarn run test -- --debug",
+    "postinstall": "npx playwright install",
+    "xray:sendTestResults": "(yarn copyXrayScripts) && (cd scripts && node makeXrayCompatibleResult.js && node --experimental-modules sendTestResultsToXray.js)",
+    "copyXrayScripts": "cpy 'node_modules/@opengov/playwright-base/build/scripts/*.js' scripts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "5.45.1",
+    "@typescript-eslint/parser": "5.45.1",
+    "async-retry": "^1.3.3",
+    "eslint": "8.28.0",
+    "eslint-plugin-playwright": "0.11.2",
+    "tslint-plugin-prettier": "^2.3.0"
+  },
+  "dependencies": {
+    "@faker-js/faker": "^7.5.0",
+    "@opengov/cit-base": "../cit-base/opengov-cit-base-v1.0.4.tgz",
+    "@opengov/playwright-base": "../playwright-base/opengov-playwright-base-v1.0.5.tgz",
+    "@playwright/test": "^1.25.1",
+    "async-retry": "^1.3.3",
+    "dotenv": "^16.0.2",
+    "moment": "^2.29.4",
+    "node-stream-zip": "1.15.0",
+    "prettier": "^2.7.1",
+    "typescript": "^4.8.2"
+  },
+  "engines": {
+    "node": ">= 16.15.0"
+  }
+}

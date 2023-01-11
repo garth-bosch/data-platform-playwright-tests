@@ -1,0 +1,16 @@
+name: Playwright Tests Runner Webhook
+on:
+  repository_dispatch:
+    types: 
+      - run-tests
+
+jobs:
+  call-workflow-passing-data:
+    uses: ./.github/workflows/test-grep.yml
+    with:
+      suite: ${{ github.event.client_payload.suite }}
+      environment: ${{ github.event.client_payload.environment }}
+      database: ${{ github.event.client_payload.database }}
+      xray_test_execution_key: ${{ github.event.client_payload.xray_test_execution_key }}
+      grep: ${{ github.event.client_payload.grep }}
+      grepinvert: ${{ github.event.client_payload.grepinvert }}

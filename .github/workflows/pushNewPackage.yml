@@ -1,0 +1,126 @@
+name: Push new NPM packages
+
+# Add later when we do auto releases
+#on:
+#  release:
+#    types: [created]
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        type: choice
+        description: Which package should be pushed to NPM
+        default: both
+        required: true
+        options:
+          - genericbase
+          - citbase
+          - both
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '16.15.1'
+      - name: Build Playwright base
+        run: yarn && yarn build:base
+      - uses: actions/upload-artifact@v3
+        with:
+          name: npm
+          path: |
+            playwright-base/*.*
+          retention-days: 3
+
+  publishNpmjs:
+    needs: build
+    env:
+      AWS_REGION: us-east-1
+      AWS_ROLE: arn:aws:iam::089687756840:role/GitHub-CI-Secrets-Read-Describe
+    permissions:
+      id-token: write
+      contents: read
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ env.AWS_ROLE }}
+          role-session-name: example_role_session
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Read secrets from AWS Secrets Manager into environment variables
+        uses: bitovi/github-actions-aws-secrets-manager@v2.0.0
+        with:
+          secrets: |
+            cit/ci-secrets/global
+          parse-json: true
+      - uses: actions/checkout@v3
+      - name: download
+        uses: actions/download-artifact@v3
+        with:
+          name: npm
+          path: npm
+      - uses: actions/setup-node@v3
+        with:
+          always-auth: true
+          node-version: '16.15.1'
+      - name: publish playwright-base
+        if: ${{ github.event.inputs.package == 'genericbase' || github.event.inputs.package == 'both' }}
+        working-directory: npm
+        run: |
+          for filename in *.tgz; 
+          do
+            echo "Publishing - $filename"
+            echo "//registry.npmjs.org/:_authToken=${CIT_CI_SECRETS_GLOBAL_NPM_PUBLISH}" > .npmrc
+            yarn publish "$filename"
+            echo "Published - $filename"
+          done
+      - name: publish cit-base
+        if: ${{ github.event.inputs.package == 'citbase' || github.event.inputs.package == 'both' }}
+        working-directory: cit-base
+        run: |
+          (yarn remove @opengov/playwright-base --skip-integrity-check || echo \"Base not removed\") && yarn generate-lock-entry
+          echo "//registry.npmjs.org/:_authToken=${CIT_CI_SECRETS_GLOBAL_NPM_PUBLISH}" > .npmrc
+          yarn add @opengov/playwright-base
+          yarn publish
+      - uses: actions/upload-artifact@v3
+        with:
+          name: npm
+          path: |
+            cit-base/*.*
+          retention-days: 3
+
+  publishGitHub:
+    needs: build
+    # permission can be added at job level or workflow level
+    permissions:
+      packages: write
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - name: download
+        uses: actions/download-artifact@v3
+        with:
+          name: npm
+          path: npm
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '16.15.1'
+          registry-url: https://npm.pkg.github.com/
+      - name: publish playwright-base
+        if: ${{ github.event.inputs.package == 'genericbase' || github.event.inputs.package == 'both' }}
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        working-directory: npm
+        run: |
+          for filename in *.tgz; 
+          do
+            echo "Publishing - $filename"
+            yarn publish $filename
+            echo "Published - $filename"
+          done
+      # Don't publish cit-base, these only need to go to npmjs
+

@@ -1,0 +1,21 @@
+# Nightly scheduled 
+name: Nightly run broken tests
+
+# Controls when the workflow will run
+on:
+  schedule:
+    # Run 7:30 am daily UTC
+    - cron:  '30 7 * * *'
+  workflow_dispatch:
+
+# Run tests
+jobs:
+  call-workflow-passing-data:
+    uses: ./.github/workflows/test-grep.yml
+    with:
+      suite: 'both'
+      environment: 'vpcstable'
+      database: 'qa-conditions'
+      grep: '@known_defect|@broken_test'
+      grepinvert: '@wip'
+      uploadReport: false

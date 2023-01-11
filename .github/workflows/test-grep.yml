@@ -1,0 +1,231 @@
+name: Playwright Tests Runner - Grep Enabled
+on:
+  workflow_call:
+    inputs:
+      suite:
+        type: string
+        description: Employee, Storefront, or both suites
+        required: true
+        default: both
+      environment:
+        type: string
+        description: Test environment
+        default: vpcstable
+        required: true
+      database:
+        type: string
+        description: Test Database
+        default: qa-conditions
+        required: true
+      xray_test_execution_key:
+        description: Xray Test Execution Key
+        required: false
+        type: string
+      grep:
+        type: string
+        description: Filter test by grep E.g. - @OGT-33587 or @OGT-33587|@OGT-38482 or @nightly
+        default: '@smoke'
+        required: false
+      grepinvert:
+        type: string
+        description: Filter test by grep-invert (tests not to run) E.g. - @OGT-33587 or @OGT-33587|@OGT-38482 or @known_defect
+        default: '@known_defect'
+        required: false
+      uploadReport:
+        type: boolean
+        description: True if we should upload results to github pages
+        default: false
+        required: false
+        
+  workflow_dispatch:
+    inputs:
+      suite:
+        type: choice
+        description: Employee, Storefront, or both suites
+        default: both
+        required: true
+        options:
+          - both
+          - employee
+          - storefront
+      database:
+        type: choice
+        description: Test Database
+        default: qa-conditions
+        required: true
+        options:
+          - qa-conditions
+          - qa-conditions-2
+          - qa-conditions-copy
+      environment:
+        type: choice
+        description: Test environment
+        default: vpcstable
+        required: true
+        options:
+          - vpcstable
+          - chum.vpctest
+          - barracuda.vpctest
+          - narwhal.vpctest
+          - nautilus.vpctest
+          - betta.vpctest
+          - shark.vpctest
+          - walrus.vpctest
+          - sandbox.vpctest
+      xray_test_execution_key:
+        description: Xray Test Execution Key
+        required: false
+        type: string
+      grep:
+        type: string
+        description: Filter test by grep E.g. - @OGT-33587 or @OGT-33587|@OGT-38482 or @nightly
+        default: '@smoke'
+        required: true
+      grepinvert:
+        type: string
+        description: Filter test by grep-invert (tests not to run) E.g. - @OGT-33587 or @OGT-33587|@OGT-38482 or @known_defect
+        default: '@known_defect|@broken_test'
+        required: true
+      uploadReport:
+        type: boolean
+        description: True if we should upload results to github pages
+        default: false
+        required: false
+        
+jobs:
+  test:
+    env:
+      AWS_REGION: us-east-1
+      AWS_ROLE: arn:aws:iam::089687756840:role/GitHub-CI-Secrets-Read-Describe
+    # permission can be added at job level or workflow level
+    permissions:
+      id-token: write
+      contents: read # This is required for actions/checkout
+    timeout-minutes: 240
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ env.AWS_ROLE }}
+          role-session-name: example_role_session
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Read secrets from AWS Secrets Manager into environment variables
+        uses: bitovi/github-actions-aws-secrets-manager@v2.0.0
+        with:
+          secrets: |
+            cit/ci-secrets/global
+          parse-json: true
+      - name: set variables that are secrets
+        run: |
+          echo "CIT_OAUTH_CLIENT_ID=${CIT_CI_SECRETS_GLOBAL_QA_CIT_OAUTH_CLIENT_ID}" >> $GITHUB_ENV
+          echo "CIT_OAUTH_CLIENT_SECRET=${CIT_CI_SECRETS_GLOBAL_QA_CIT_OAUTH_CLIENT_SECRET}" >> $GITHUB_ENV
+          echo "CIT_MANDRILL_API_KEY=${CIT_CI_SECRETS_GLOBAL_QA_CIT_MANDRILL_API_KEY}" >> $GITHUB_ENV
+          echo "PLC_APP_TEST_PASSWORD=${CIT_CI_SECRETS_GLOBAL_QA_PLC_APP_TEST_PASSWORD}" >> $GITHUB_ENV
+          echo "XRAY_CLIENT_ID=${CIT_CI_SECRETS_GLOBAL_QA_XRAY_CLIENT_ID}" >> $GITHUB_ENV
+          echo "XRAY_CLIENT_SECRET=${CIT_CI_SECRETS_GLOBAL_QA_XRAY_CLIENT_SECRET}" >> $GITHUB_ENV
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '16.15.1'
+      - name: Install dependencies
+        run: yarn build
+      - name: Run Tests
+        run: yarn test:${{ inputs.suite }}-grep:chrome
+        env:
+          PLC_TEST_SUBDOMAIN: ${{ inputs.environment }}
+          GREP: ${{ inputs.grep }}
+          GREPINVERT: ${{ inputs.grepinvert }}
+          PLC_ADMIN_USER_EMAIL: api_admin@opengov.com
+          PLC_EMPLOYEE_USER_EMAIL: api_employee@opengov.com
+          PLC_STOREFRONT_USER_EMAIL: ogautocit@gmail.com
+          PLC_SUPER_USER_EMAIL: twalsh+12233@opengov.com
+          PLC_NOTIFICATION_USER_EMAIL: api_notification_tester@opengov.com
+          AUTH_PROTOCOL: https
+          PLC_TEST_ENV: ${{ inputs.database }}
+          PLC_TEST_ENV_DEV: dev-master
+          CIT_OAUTH_HOST: login.vpctest.com/oauth/token
+          retry_test: "true"
+          APP_STORE_CLIENT_ID1: Ke6dBbYgqa3L643ApdZRdg0jaPKyWW2s
+          APP_STORE_CLIENT_ID2: EqOqCWvkEi4ERrKud56MIa70vTtjeAQO
+          APP_STORE_CLIENT_ID3: IvMaEjfKf3TJ6lewpEnWWQzLJhzIPtf5
+          APP_STORE_CLIENT_ID4: Sm03exmxDRtoTzArTZOomULyvcs23jOh
+          APP_STORE_CLIENT_ID5: IOv5YC2o6VAwzbVwYuJYFU5hZq3piIbC
+          APP_STORE_CLIENT_ID6: u8i4Sw0208P0cJpKFklznaYfQc4mns2k
+          APP_STORE_CLIENT_ID7: 3PYZxaxhbyUzhRqenkQBc23cnNZcTrAT
+          APP_STORE_CLIENT_ID8: nYA3cjJYDqAS6lVuj6yh6cw5iuvmsjI9
+      - uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: playwright-report
+          path: ${{ github.workspace }}/**/test-results/html/
+          retention-days: 3
+      - uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: playwright-junit
+          path: ${{ github.workspace }}/**/test-results/junit/
+          retention-days: 3
+      - name: Publish results to Xray for both test suite
+        env:
+          CIT_TEST_SUITE: ${{ github.event.inputs.suite }}
+          XRAY_CLIENT_ID: ${{ env.XRAY_CLIENT_ID }}
+          XRAY_CLIENT_SECRET: ${{ env.XRAY_CLIENT_SECRET }}
+          XRAY_TEST_EXECUTION_KEY: ${{ github.event.inputs.xray_test_execution_key }}
+          TEST_RESULTS_LAMBDA_API_KEY: ${{ env.CIT_CI_SECRETS_GLOBAL_TEST_RESULTS_LAMBDA_API_KEY_2 }}
+        if: always() && env.CIT_TEST_SUITE == 'both' && env.XRAY_TEST_EXECUTION_KEY !=null
+        run: (cd playwright-employee-app && yarn xray:sendTestResults) && (cd playwright-storefront-app && yarn xray:sendTestResults)
+      - name: Publish results to Xray for single test suite
+        env:
+          CIT_TEST_SUITE: ${{ github.event.inputs.suite }}
+          XRAY_CLIENT_ID: ${{ env.XRAY_CLIENT_ID }}
+          XRAY_CLIENT_SECRET: ${{ env.XRAY_CLIENT_SECRET }}
+          XRAY_TEST_EXECUTION_KEY: ${{ github.event.inputs.xray_test_execution_key }}
+          TEST_RESULTS_LAMBDA_API_KEY: ${{ env.CIT_CI_SECRETS_GLOBAL_TEST_RESULTS_LAMBDA_API_KEY_2 }}
+        if: always() && env.CIT_TEST_SUITE != 'both' && env.XRAY_TEST_EXECUTION_KEY !=null
+        run: cd playwright-${{ github.event.inputs.suite }}-app && yarn xray:sendTestResults
+        
+  publishToPages:
+    if: ${{ (failure() || success()) && github.event_name == 'schedule' && inputs.uploadReport == true }}
+    permissions: write-all
+    needs: test
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: us-east-1
+      AWS_ROLE: arn:aws:iam::089687756840:role/GitHub-CI-Secrets-Read-Describe
+    steps:
+      - name: download
+        uses: actions/download-artifact@v3
+        with:
+          name: playwright-report
+          path: $GITHUB_WORKSPACE/playwright-report
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ env.AWS_ROLE }}
+          role-session-name: example_role_session
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Read secrets from AWS Secrets Manager into environment variables
+        uses: bitovi/github-actions-aws-secrets-manager@v2.0.0
+        with:
+          secrets: |
+            cit/ci-secrets/global
+          parse-json: true
+      - name: set variables that are secrets
+        run: |
+          echo "CIT-SDET-REPORT=${CIT_CI_SECRETS_GLOBAL_CIT_SDET_REPORT}" >> $GITHUB_ENV
+      - name: Create root index html
+        run: echo "<!DOCTYPE html><html><body><p><a test href='/playwright-employee-app/test-results/html/index.html'>Employee</a></p><p><a test href='/playwright-storefront-app/test-results/html/index.html'>Storefront</a></p></body></html>" >> index.html
+        working-directory: $GITHUB_WORKSPACE/playwright-report
+      ############################################################################
+      # Publish report to pages
+      - name: Deploy report to Github Pages
+        if: always()
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          personal_token: ${{ env.CIT-SDET-REPORT }}
+          external_repository: OpenGov/cit-quality-reports
+          publish_branch: gh-pages
+          publish_dir: $GITHUB_WORKSPACE/playwright-report
+      ############################################################################
